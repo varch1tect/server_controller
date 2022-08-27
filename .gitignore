@@ -1,5 +1,6 @@
 # Unnecessary Directories
 
 # Unnecassary Files
+.host
 server.log
 server_pid.txt
