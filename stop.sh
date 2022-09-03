@@ -1,8 +1,13 @@
 #! /bin/sh
 
+#FILE=NULL
 FILE=.server_pid
-PID="$(<.server_pid)"
+#[[ -f .server_pid ]] && FILE=.server_pid || echo "no .server_pid"
+#PID=NULL
+[[ -f "$FILE" ]] && PID="$(<.server_pid)" # || echo ".server_pid Does Not Exist"
 PORT_CHECK=$(lsof -i:40120)
+#echo "$FILE"
+#echo "$PID"
 
 if [[ -f "$FILE" ]]; then
     echo "$FILE found, verifying if server is running on port 40120"
@@ -16,12 +21,12 @@ if [[ -f "$FILE" ]]; then
         rm -f .server_pid && echo "removed $FILE" || "unable to remove $FILE"
     fi
 else
-    echo "Couldn't find $FILE, verifying port 40120:"
+    echo "Couldn't find .server_pid, verifying port 40120:"
     if [[ $PORT_CHECK ]]; then
-        echo "Found on Port 40120:"
+        #echo "Found on Port 40120:"
         echo "$PORT_CHECK"
         PID=$(lsof -ti:40120)
-        echo "Would you like to kill $PID? Y/Yes or N/No?"
+        echo "PORT in use. Would you like to kill $PID? Y/Yes or N/No?"
             while (true); do 
                 read input
                 case $input in
@@ -40,7 +45,7 @@ else
                 esac
             done
     else
-        echo "Nothing Found on Port 40120, $FILE will be removed"
-        rm -f .server_pid && echo "removed $FILE" || "unable to remove $FILE"
+        echo "Nothing Found on Port 40120"
+        [ -f "$FILE" ] && { rm -f .server_pid; echo "removed .server_pid"; } || echo ".server_pid doesn't exist"
     fi
 fi
