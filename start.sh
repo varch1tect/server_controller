@@ -1,50 +1,54 @@
 #! /bin/sh
 
-os=$(<.host)
-echo $os
-FILE=.server_pid
-[[ -f "$FILE" ]] && PID="$(<.server_pid)"
+OS=$(<.host)
+[[ $OS = "Linux" ]] && { PORT_CHECK=$(lsof -i:40120); PID=$(lsof -ti:40120); }
+[[ $OS = "Windows" ]] && { PORT_CHECK=$(netstat -ano | grep "40120" | grep "ESTABLISHED" ); PID=$(netstat -ano | grep "40120" | grep "ESTABLISHED" | awk 'NR==1{ print $5 }'); }
 
-case $os in
-	Linux)
-		echo "This is Linux"
-		
-		if [[ -f "$FILE" ]]; then
-        		echo "$FILE exists, server running with PID $(<.server_pid). Did you mean to stop the server?"
-				while (true); do 
-                read input
-                case $input in
-                    Y|y|Yes|yes)
-                        kill -9 $(cat $FILE) && echo "$PID terminated" || echo "failed to terminate $PID"
-						rm -f .server_pid && echo "removed $FILE" || "unable to remove $FILE"
+if [[ $PID ]]; then
+    echo "Port busy, server running with PID $PID. Did you mean to stop the server?"
+    while (true); do 
+        read input
+        case $input in
+            Y|y|Yes|yes)
+                case $OS in
+	                Linux)
+                        ./stop.sh
                         break
                     ;;
-                    N|n|No|no)
+                    Windows)
+                        sh stop.sh
                         break
-                    ;;
-                    *)
-                        echo "Unexpected Input Try Again"
                     ;;
                 esac
-            done
-		else
-			nohup ./FXServer/server/run.sh > server.log 2>&1 &
-			echo $! > .server_pid
-			echo "Server running with PID $(<.server_pid)"
-		fi
+			;;
+            N|n|No|no)
+                break
+            ;;
+            *)
+                echo "Unexpected Input Try Again"
+            ;;
+        esac
+    done
+else
+	echo "Starting Server."
+    case $OS in
+        Linux)
+            nohup ./FXServer/server/run.sh > server.log 2>&1 &
+            echo "Server running with PID $!"
+        ;;
+        Windows)
+            start bash -c "./FXServer/server/start_5562_default.bat"
+			echo -n "Obtaining PID"
+			while [ -z $PID ]
+			do
+				sleep 1
+				PID=$(netstat -a -n -o | grep "40120" | grep "ESTABLISHED" | awk 'NR==1{ print $5 }')
+				echo -n "."
+			done
+			echo -e "\nServer running with PID $PID"
+        ;;
+		*)
+		echo "Distro Not Supported"
 	;;
-	Windows)
-		echo "This is Windows"
-
-		if [[ -f "$FILE" ]]; then
-        		echo "$FILE exists, server running with PID $(<.server_pid). Did you mean to stop the server?"
-		else
-			start bash -c "./FXServer/server/start_5562_default.bat" &
-			echo $! > .server_pid
-			echo "Server running with PID $(<.server_pid)"
-		fi
-	;;
-	*)
-		echo "THIS IS SPARTA"
-	;;
-esac
+    esac
+fi

@@ -1,51 +1,22 @@
 #! /bin/sh
 
-#FILE=NULL
-FILE=.server_pid
-#[[ -f .server_pid ]] && FILE=.server_pid || echo "no .server_pid"
-#PID=NULL
-[[ -f "$FILE" ]] && PID="$(<.server_pid)" # || echo ".server_pid Does Not Exist"
-PORT_CHECK=$(lsof -i:40120)
-#echo "$FILE"
-#echo "$PID"
+OS=$(<.host)
+[[ $OS = "Linux" ]] && PID=$(lsof -ti:40120)
+[[ $OS = "Windows" ]] && PID=$(netstat -ano | grep "40120" | grep "ESTABLISHED" | awk 'NR==1{ print $5 }')
 
-if [[ -f "$FILE" ]]; then
-    echo "$FILE found, verifying if server is running on port 40120"
-    echo "$PORT_CHECK"
-    if [[ $PORT_CHECK ]]; then
-        echo "Port in use, killing PID $PID"
-        kill -9 $(cat $FILE) && echo "$PID terminated" || echo "failed to terminate $PID"
-        rm -f .server_pid && echo "removed $FILE" || "unable to remove $FILE"
-    else
-        echo "Nothing Found on Port 40120, $FILE will be removed"
-        rm -f .server_pid && echo "removed $FILE" || "unable to remove $FILE"
-    fi
+if [[ $PID ]]; then
+    echo "Killing $PID"
+     case $OS in
+        Linux)
+            kill -9 $PID && echo "$PID terminated" || echo "failed to terminate $PID"
+        ;;
+        Windows)
+            taskkill //F //PID $PID
+        ;;
+		*)
+		echo "Distro Not Supported"
+    ;;
+    esac
 else
-    echo "Couldn't find .server_pid, verifying port 40120:"
-    if [[ $PORT_CHECK ]]; then
-        #echo "Found on Port 40120:"
-        echo "$PORT_CHECK"
-        PID=$(lsof -ti:40120)
-        echo "PORT in use. Would you like to kill $PID? Y/Yes or N/No?"
-            while (true); do 
-                read input
-                case $input in
-                    Y|y|Yes|yes)
-                        kill -9 $PID
-                        break
-                    ;;
-                    N|n|No|no)
-                        echo "Creating file .server_pid with $PID"
-                        echo $PID >> .server_pid
-                        break
-                    ;;
-                    *)
-                        echo "Unexpected Input Try Again"
-                    ;;
-                esac
-            done
-    else
-        echo "Nothing Found on Port 40120"
-        [ -f "$FILE" ] && { rm -f .server_pid; echo "removed .server_pid"; } || echo ".server_pid doesn't exist"
-    fi
+    echo "Nothing Found on Port 40120"
 fi
